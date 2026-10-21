@@ -230,7 +230,7 @@ export async function periodChecklist(ctx: Ctx, periodId: string) {
     payslipsMissing: slips.missing,
     missing: { count: missing.length, items: missing.slice(0, 50) },
     steps,
-    readyToClose: period.status === 'open' && steps.filter((s) => s.blocksClose).every((s) => s.done),
+    readyToClose: period.status === 'open' && records.approved > 0 && steps.filter((s) => s.blocksClose).every((s) => s.done),
   };
 }
 
