@@ -300,6 +300,15 @@ All business data lives in PostgreSQL, including uploaded documents, which are s
 - Rate limits are kept in process memory. With several instances, each instance enforces its own limits. Account lockout is stored in the database and applies globally.
 - Free web services sleep after 15 minutes of inactivity, so in-process jobs do not run while asleep. The cron job covers this.
 
+### Using Supabase instead of Render PostgreSQL
+
+The application only needs a PostgreSQL connection string, so a Supabase project works as the database. Set up the web service by hand (**New → Web Service**, build `npm ci --include=dev && npm run build`, start `npm start`, health check `/api/health`) and set these variables: `NODE_ENV=production`, `NODE_VERSION=22`, `APP_SECRET` (use Render's Generate), `DATABASE_URL`, `RUN_JOBS_IN_PROCESS=true` if you have no cron service, `DB_POOL_MAX=5` on the free tiers, and the `BOOTSTRAP_SUPERADMIN_*` variables for the first deploy.
+
+- **Use the Session pooler string** for `DATABASE_URL`: in Supabase click **Connect → Session pooler**. It looks like `postgresql://postgres.<project>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres`. The project's `https://<project>.supabase.co` API URL is not a database, and the direct `db.<project>.supabase.co` host is IPv6-only, which Render cannot reach. The transaction pooler on port 6543 does not support prepared statements. URL-encode `@ # : / %` in the password.
+- **Start with an empty database.** The application applies and records its own migrations. If the SQL files were pasted into the Supabase SQL editor beforehand, start-up fails with `relation ... already exists`; reset with `drop schema public cascade; create schema public; drop schema if exists drizzle cascade;` in the SQL editor and redeploy.
+- **Turn off the Data API.** Supabase exposes tables in the `public` schema through its REST API to the `anon` and `authenticated` roles unless row level security is enabled, and this application does not use row level security because it never talks to that API. Under **Project Settings → Data API**, disable the Data API (or remove `public` from the exposed schemas) so staff and payroll data cannot be read with the project's anon key.
+- Free Supabase projects pause after a week without activity; restore them from the Supabase dashboard. Start-up then reports a connection timeout until the project is back.
+
 ---
 
 ## Security notes
