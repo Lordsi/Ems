@@ -148,7 +148,7 @@ export const registrationBody = (env: TestEnv, overrides: Record<string, unknown
     dateOfBirth: '1990-06-15',
     phone: '+265 991 234 567',
     departmentId: env.dept.CON,
-    workLocation: 'Kanengo depot, Lilongwe',
+    workLocation: "St Mark's parish, Mzuzu",
     employmentDate: '2020-02-01',
     employmentType: 'permanent',
   },

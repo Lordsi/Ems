@@ -16,7 +16,6 @@ import { config } from '../server/config';
 import { createDb, runMigrations, type Db } from '../server/db/client';
 import { seedBase } from '../server/db/seed';
 import {
-  departmentLocations,
   departments,
   employees,
   employmentGrades,
@@ -100,28 +99,10 @@ try {
 
   /* ---------------- Organisation ---------------- */
   const dept = Object.fromEntries((await db.select().from(departments)).map((d) => [d.code, d.id])) as Record<string, string>;
-  const locRows = await db
-    .insert(workLocations)
-    .values([
-      { code: 'LL-HQ', name: 'Lilongwe Head Office', address: 'Area 3, Lilongwe' },
-      { code: 'BT', name: 'Blantyre Branch', address: 'Victoria Avenue, Blantyre' },
-      { code: 'SITE-A', name: 'Construction Site A', address: 'Kanengo, Lilongwe' },
-      { code: 'MZ-CLINIC', name: 'Mzuzu Clinic', address: 'Mzuzu' },
-    ])
-    .onConflictDoNothing()
-    .returning();
-  const loc = Object.fromEntries(locRows.map((l) => [l.code, l.id])) as Record<string, string>;
-  const links: [string, string][] = [
-    ['ADM', 'LL-HQ'],
-    ['ADM', 'BT'],
-    ['CLG', 'LL-HQ'],
-    ['CLG', 'BT'],
-    ['CON', 'SITE-A'],
-    ['CON', 'LL-HQ'],
-    ['PRT', 'BT'],
-    ['MED', 'MZ-CLINIC'],
-  ];
-  await db.insert(departmentLocations).values(links.map(([d, l]) => ({ departmentId: dept[d], locationId: loc[l] }))).onConflictDoNothing();
+  const loc = Object.fromEntries((await db.select().from(workLocations)).map((l) => [l.code, l.id])) as Record<string, string>;
+  for (const code of ['DIO-OFFICE', 'SMK-MZUZU', 'STP-CATH', 'STP-HOSP', 'SDU-MZIMBA']) {
+    if (!loc[code]) throw new Error(`Diocese location ${code} is missing. Base seed should insert it.`);
+  }
 
   const gradeRows = await db
     .insert(employmentGrades)
@@ -139,7 +120,7 @@ try {
     ['Administrator', 'ADM'],
     ['Accountant', 'ADM'],
     ['HR Officer', 'ADM'],
-    ['Pastor', 'CLG'],
+    ['Priest', 'CLG'],
     ['Site Supervisor', 'CON'],
     ['Mason', 'CON'],
     ['Press Operator', 'PRT'],
@@ -174,18 +155,18 @@ try {
     supervisor?: string;
   };
   const people: Person[] = [
-    { username: 'demo.super', roles: ['super_admin'], name: 'Grace Banda', dept: 'ADM', loc: 'LL-HQ', title: 'Administrator', grade: 'G4', dob: '1972-03-14', since: '2008-01-07', salary: 1_850_000_00 },
-    { username: 'demo.admin', roles: ['admin'], name: 'Peter Phiri', dept: 'ADM', loc: 'LL-HQ', title: 'HR Officer', grade: 'G3', dob: '1984-07-22', since: '2012-05-02', salary: 1_200_000_00, supervisor: 'demo.super' },
-    { username: 'demo.finance', roles: ['finance'], name: 'Mercy Chirwa', dept: 'ADM', loc: 'LL-HQ', title: 'Accountant', grade: 'G3', dob: '1988-11-02', since: '2015-09-01', salary: 1_100_000_00, supervisor: 'demo.super' },
-    { username: 'demo.finance2', roles: ['finance'], name: 'Joseph Mwale', dept: 'ADM', loc: 'BT', title: 'Accountant', grade: 'G2', dob: '1991-02-17', since: '2019-03-11', salary: 850_000_00, supervisor: 'demo.finance' },
-    { username: 'demo.moderator', roles: ['moderator'], name: 'Chikondi Kaunda', dept: 'CON', loc: 'SITE-A', title: 'Site Supervisor', grade: 'G3', dob: '1980-05-30', since: '2010-02-15', salary: 950_000_00 },
-    { username: 'demo.employee', name: 'Tiyamike Gondwe', dept: 'CON', loc: 'SITE-A', title: 'Mason', grade: 'G1', dob: '1995-09-09', since: '2021-06-01', salary: 420_000_00, supervisor: 'demo.moderator' },
-    { name: 'Rev. Daniel Nkhoma', dept: 'CLG', loc: 'LL-HQ', title: 'Pastor', grade: 'G3', dob: dobTurning(60, 4), since: '1994-01-10', salary: 900_000_00 },
-    { name: 'Esther Zulu', dept: 'MED', loc: 'MZ-CLINIC', title: 'Nurse', grade: 'G2', dob: dobTurning(60, 10), since: '1999-08-16', salary: 780_000_00 },
-    { name: 'Blessings Tembo', dept: 'CON', loc: 'SITE-A', title: 'Mason', grade: 'G1', dob: '1990-12-01', since: '2018-04-03', salary: 400_000_00, supervisor: 'demo.moderator' },
-    { name: 'Agnes Kamanga', dept: 'CON', loc: 'LL-HQ', title: 'Driver', grade: 'G1', dob: '1986-06-19', since: '2016-10-10', salary: 380_000_00, type: 'contract', contractEnd: iso(shiftMonths(1)) },
-    { name: 'Samuel Mbewe', dept: 'PRT', loc: 'BT', title: 'Press Operator', grade: 'G2', dob: '1979-04-04', since: '2005-07-18', salary: 610_000_00 },
-    { name: 'Dr. Ruth Msiska', dept: 'MED', loc: 'MZ-CLINIC', title: 'Clinical Officer', grade: 'G4', dob: '1976-01-25', since: '2011-11-01', salary: 1_400_000_00 },
+    { username: 'demo.super', roles: ['super_admin'], name: 'Grace Banda', dept: 'ADM', loc: 'DIO-OFFICE', title: 'Administrator', grade: 'G4', dob: '1972-03-14', since: '2008-01-07', salary: 1_850_000_00 },
+    { username: 'demo.admin', roles: ['admin'], name: 'Peter Phiri', dept: 'ADM', loc: 'DIO-OFFICE', title: 'HR Officer', grade: 'G3', dob: '1984-07-22', since: '2012-05-02', salary: 1_200_000_00, supervisor: 'demo.super' },
+    { username: 'demo.finance', roles: ['finance'], name: 'Mercy Chirwa', dept: 'ADM', loc: 'DIO-OFFICE', title: 'Accountant', grade: 'G3', dob: '1988-11-02', since: '2015-09-01', salary: 1_100_000_00, supervisor: 'demo.super' },
+    { username: 'demo.finance2', roles: ['finance'], name: 'Joseph Mwale', dept: 'ADM', loc: 'SDU-MZIMBA', title: 'Accountant', grade: 'G2', dob: '1991-02-17', since: '2019-03-11', salary: 850_000_00, supervisor: 'demo.finance' },
+    { username: 'demo.moderator', roles: ['moderator'], name: 'Chikondi Kaunda', dept: 'CON', loc: 'SMK-MZUZU', title: 'Site Supervisor', grade: 'G3', dob: '1980-05-30', since: '2010-02-15', salary: 950_000_00 },
+    { username: 'demo.employee', name: 'Tiyamike Gondwe', dept: 'CON', loc: 'SMK-MZUZU', title: 'Mason', grade: 'G1', dob: '1995-09-09', since: '2021-06-01', salary: 420_000_00, supervisor: 'demo.moderator' },
+    { name: 'Rev. Daniel Nkhoma', dept: 'CLG', loc: 'STP-CATH', title: 'Priest', grade: 'G3', dob: dobTurning(60, 4), since: '1994-01-10', salary: 900_000_00 },
+    { name: 'Esther Zulu', dept: 'MED', loc: 'STP-HOSP', title: 'Nurse', grade: 'G2', dob: dobTurning(60, 10), since: '1999-08-16', salary: 780_000_00 },
+    { name: 'Blessings Tembo', dept: 'CON', loc: 'SMK-MZUZU', title: 'Mason', grade: 'G1', dob: '1990-12-01', since: '2018-04-03', salary: 400_000_00, supervisor: 'demo.moderator' },
+    { name: 'Agnes Kamanga', dept: 'CON', loc: 'DIO-OFFICE', title: 'Driver', grade: 'G1', dob: '1986-06-19', since: '2016-10-10', salary: 380_000_00, type: 'contract', contractEnd: iso(shiftMonths(1)) },
+    { name: 'Samuel Mbewe', dept: 'PRT', loc: 'DIO-OFFICE', title: 'Press Operator', grade: 'G2', dob: '1979-04-04', since: '2005-07-18', salary: 610_000_00 },
+    { name: 'Dr. Ruth Msiska', dept: 'MED', loc: 'STP-HOSP', title: 'Clinical Officer', grade: 'G4', dob: '1976-01-25', since: '2011-11-01', salary: 1_400_000_00 },
   ];
 
   const byUsername: Record<string, { userId: string; employeeId: string; username: string; roles: RoleKey[] }> = {};
@@ -228,7 +209,7 @@ try {
     employeeIds.push({ id: e.id, salary: p.salary, name: p.name });
   }
   await db.insert(moderatorScopes).values([
-    { userId: byUsername['demo.moderator'].userId, scopeType: 'org_unit', departmentId: dept.CON, locationId: loc['SITE-A'] },
+    { userId: byUsername['demo.moderator'].userId, scopeType: 'org_unit', departmentId: dept.CON, locationId: loc['SMK-MZUZU'] },
     { userId: byUsername['demo.moderator'].userId, scopeType: 'direct_reports' },
   ]);
   await db.update(departments).set({ headEmployeeId: byUsername['demo.moderator'].employeeId }).where(eq(departments.id, dept.CON));
@@ -284,16 +265,16 @@ try {
   /* ---------------- Communications ---------------- */
   const adm = actorFor(byUsername['demo.admin']);
   const ann = (await comms.createAnnouncement(ctxFor(db, adm), {
-    title: 'Welcome to the new Employee Management System',
-    body: 'All staff can now view their employment details and payslips online.\n\nPlease review your profile and submit a correction request if anything is wrong.',
+    title: 'Welcome to the diocesan staff system',
+    body: 'Staff of the Anglican Diocese of Northern Malawi can now view their employment details and payslips online.\n\nPlease review your profile and submit a correction request if anything is wrong.',
     commentsEnabled: true,
   })) as { id: string };
   await comms.setAnnouncementStatus(ctxFor(db, adm), ann.id, { status: 'published' });
   const siteNotice = (await comms.createAnnouncement(ctxFor(db, adm), {
-    title: 'Site A safety briefing',
-    body: 'Mandatory safety briefing for all Construction staff at Site A on Monday at 07:30.',
+    title: "St Mark's Mzuzu building briefing",
+    body: "Mandatory briefing for Construction staff at St Mark's, Mzuzu on Monday at 07:30.",
     targetDepartmentIds: [dept.CON],
-    targetLocationIds: [loc['SITE-A']],
+    targetLocationIds: [loc['SMK-MZUZU']],
   })) as { id: string };
   await comms.setAnnouncementStatus(ctxFor(db, adm), siteNotice.id, { status: 'published' });
   const startsAt = new Date(Date.UTC(cy, cm, now.getUTCDate() + 7, 8, 0));
@@ -302,7 +283,7 @@ try {
     description: 'Review of the year and plans for the next. All departments.',
     startsAt: startsAt.toISOString(),
     endsAt: new Date(startsAt.getTime() + 3 * 3600_000).toISOString(),
-    venue: 'Lilongwe Head Office, main hall',
+    venue: 'Diocesan Office, Mzuzu',
     commentsEnabled: true,
   })) as { id: string };
   await comms.setEventStatus(ctxFor(db, adm), ev.id, { status: 'published' });
@@ -315,7 +296,7 @@ try {
       dateOfBirth: '1997-03-03',
       phone: '+265 991 111 222',
       departmentId: dept.PRT,
-      workLocation: 'Blantyre print works',
+      workLocation: 'Diocesan press, Mzuzu',
       jobTitleId: title['Press Operator'],
       employmentDate: iso(shiftMonths(-2)),
       employmentType: 'permanent',
@@ -329,7 +310,7 @@ try {
     { username: 'demo.admin', role: 'Administrator' },
     { username: 'demo.finance', role: 'Finance Officer' },
     { username: 'demo.finance2', role: 'Finance Officer (second approver)' },
-    { username: 'demo.moderator', role: 'Moderator (Construction @ Site A + direct reports)' },
+    { username: 'demo.moderator', role: "Moderator (Construction at St Mark's, Mzuzu + direct reports)" },
     { username: 'demo.employee', role: 'Employee' },
     { username: 'demo.pending', role: 'Pending verification' },
   ]);

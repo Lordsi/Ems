@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Navigate, useParams, useSearchParams } from 'react-router';
+import { Link, Navigate, useParams, useSearchParams } from 'react-router';
 import { Archive, ArchiveRestore, BadgeCheck, FilePen, Mail, Pencil } from 'lucide-react';
 import { useMe } from '../../lib/auth';
 import { useApi } from '../../lib/hooks';
-import { date, label } from '../../lib/format';
+import { date, dateTime, label } from '../../lib/format';
 import type { EmployeeDetail, Lookups } from '../../lib/types';
 import { Alert, Avatar, Button, Card, CardHeader, DescriptionList, EmptyState, ErrorState, PageHeader, PageLoader, StatusBadge, Tabs } from '../../components/ui';
 import { ArchiveModal, CorrectionModal, EditEmployeeModal, InviteModal, VerifyModal } from './ProfileModals';
@@ -170,13 +170,27 @@ export function EmployeeProfilePage() {
             )}
             {a.account && (
               <Card>
-                <CardHeader title="System account" />
+                <CardHeader
+                  title="System account"
+                  actions={
+                    a.self ? (
+                      <Link to="/account" className="text-sm font-medium text-brand-700 hover:underline">
+                        Manage
+                      </Link>
+                    ) : undefined
+                  }
+                />
                 {emp.account ? (
                   <DescriptionList
                     columns={1}
                     items={[
                       { label: 'Username', value: emp.account.username },
                       { label: 'Email', value: emp.account.email },
+                      { label: 'Account phone', value: emp.account.phone ?? '—' },
+                      { label: 'Preferred language', value: label(emp.account.preferredLanguage) },
+                      { label: 'Two-factor', value: emp.account.mfaEnabled ? 'Enabled' : 'Not enabled' },
+                      { label: 'Last sign-in', value: dateTime(emp.account.lastLoginAt) },
+                      { label: 'Account opened', value: date(emp.account.createdAt) },
                       { label: 'Account status', value: <StatusBadge status={emp.account.status} /> },
                     ]}
                   />

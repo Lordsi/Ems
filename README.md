@@ -53,7 +53,7 @@ This creates locations, job titles and grades, plus 12 employees. It also create
 | `demo.admin` | Administrator |
 | `demo.finance` | Finance Officer |
 | `demo.finance2` | Finance Officer, used as the second approver |
-| `demo.moderator` | Moderator, scoped to Construction at Site A plus direct reports |
+| `demo.moderator` | Moderator, scoped to Construction at St Mark's, Mzuzu plus direct reports |
 | `demo.employee` | Employee |
 | `demo.pending` | Self-registered account awaiting verification |
 
@@ -121,7 +121,7 @@ No secret is ever needed in frontend code. The client only talks to its own orig
   - Development: `npm run db:migrate`
   - Production build: `npm run db:migrate:prod`
 - **Changing the schema:** edit `schema.ts`, run `npm run db:generate` to create a new SQL migration, review the SQL, commit it, then run the tests.
-- **Reference data** is seeded idempotently on every start: permissions, role mappings, the five initial departments (ADM, CLG, CON, PRT, MED), default settings and a *draft* retirement policy. No user accounts are ever seeded.
+- **Reference data** is seeded idempotently on every start: permissions, role mappings, the five initial departments (ADM, CLG, CON, PRT, MED), the parishes and stations of the Anglican Diocese of Northern Malawi (diocesan office in Mzuzu, St Peter's Cathedral and St Peter's Mission Hospital on Likoma, and the published parishes of the Likoma, Nkhata Bay, Mzuzu, Karonga and Mzimba archdeaconries), default settings and a *draft* retirement policy. A database that still has the placeholder organisation name “Employee Management System” is renamed to **Anglican Diocese of Northern Malawi** on the next start. A name that has already been changed is left as it is. No user accounts are ever seeded.
 
 ### Integrity rules enforced inside the database
 
@@ -199,6 +199,7 @@ All of this is audited. Run it only from a trusted shell with database access.
   - Second-person approval is on by default.
   - Corrections create a new revision. The approved original stays in force until the revision is approved, which then supersedes it.
   - Payslips are printable or can be saved as PDF from the browser (MWK by default).
+  - Each period has period-end tools for the accountants: a close checklist with the employees who still have no record, a pay run that marks every approved record paid on one date, remittances by deduction (tax, pension, loans, other) with the payee labels used on records, cost allocation by department and by parish or station, a balanced salaries journal, a comparison with the previous period that flags new people, missing records and changes over a chosen percentage, and a register CSV with one column per earning and deduction category.
 - **Retirement**
   - Monitoring only runs under an **adopted** policy.
   - Finance prepares a statement with an explicit calculation method and source figures. A different reviewer verifies it. The Super Admin approves, rejects or defers.
@@ -337,6 +338,7 @@ These features need infrastructure or credentials that this repository does not 
 | **PDF payslips** | Payslips are print-optimised pages. Users choose *Print / Save as PDF* in the browser. | Add server-side PDF rendering if signed or batch-emailed PDFs are required. |
 | **Document storage** | Stored in PostgreSQL (`bytea`, 5 MB limit by default). | For large volumes, move to object storage (e.g. S3 or R2) behind `server/services/documents.ts`. |
 | **Malware scanning** | Uploads are type-checked by content but not virus-scanned. | Add a scanning step (e.g. ClamAV or a cloud scanning API) before storing documents. |
-| **Statutory payroll calculations** | Tax, pension and other deductions are entered as explicit line items. No statutory formula is invented. | Implement Malawi PAYE and pension rules once they have been confirmed by the organisation's finance or legal advisers. |
+| **Statutory payroll calculations** | Tax, pension and other deductions are entered as explicit line items. No statutory formula is invented. The remittance and journal views total what was entered. | Implement Malawi PAYE and pension rules once they have been confirmed by the organisation's finance or legal advisers. |
+| **General ledger posting** | The salaries journal uses account names (basic salaries, allowances, PAYE payable, net salaries payable, and so on) and departments as cost centres. It is exported as CSV. | Map the names to the diocese's chart of accounts, or add a posting integration to the accounting package in use. |
 | **Retirement age** | Age 60 exists only as a *draft* policy and has no effect until a Super Admin verifies and adopts it. | Confirm the applicable age and terms, then adopt the policy in the app. |
 | **Single sign-on** | Local accounts with optional TOTP MFA. | Add OIDC or SAML if the organisation uses an identity provider. |

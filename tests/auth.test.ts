@@ -1,7 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { anonClient, loginAs, makeUser, PASSWORD, registrationBody, setupEnv, type TestEnv } from './helpers';
-import { auditLogs, sessions, userRoles, users } from '../server/db/schema';
+import { auditLogs, notifications, sessions, userRoles, users } from '../server/db/schema';
+import { notify } from '../server/services/notifications';
 import { currentTotp } from '../server/auth/totp';
 import { decrypt } from '../server/lib/crypto';
 
@@ -211,6 +212,85 @@ describe('role changes take effect immediately', () => {
     expect([401, 403]).toContain(after.status);
     const rows = await env.db.select().from(userRoles).where(eq(userRoles.userId, fin.userId));
     expect(rows).toHaveLength(1);
+  });
+});
+
+describe('account profile', () => {
+  it('updates contact details, language and notification choices', async () => {
+    const u = await makeUser(env);
+    const c = await loginAs(env, u.username);
+    expect((await c.patch('/api/auth/profile', {})).status).toBe(400);
+    expect((await c.patch('/api/auth/profile', { preferredLanguage: 'fr' })).status).toBe(400);
+    const saved = await c
+      .patch('/api/auth/profile', {
+        displayName: 'Grace Phiri',
+        phone: '+265 991 234 567',
+        preferredLanguage: 'tum',
+        notifyAnnouncements: false,
+        notifyEvents: true,
+      })
+      .expect(200);
+    expect(saved.body.displayName).toBe('Grace Phiri');
+    expect(saved.body.preferredLanguage).toBe('tum');
+    const me = await c.get('/api/auth/me').expect(200);
+    expect(me.body.user.displayName).toBe('Grace Phiri');
+    expect(me.body.user.phone).toBe('+265 991 234 567');
+    expect(me.body.user.preferredLanguage).toBe('tum');
+    expect(me.body.user.notifyAnnouncements).toBe(false);
+    expect(me.body.user.notifyEvents).toBe(true);
+    await c.patch('/api/auth/profile', { phone: '' }).expect(200);
+    expect((await c.get('/api/auth/me')).body.user.phone).toBeNull();
+    expect((await c.get('/api/auth/me')).body.user.displayName).toBe('Grace Phiri');
+  });
+
+  it('lists only this account’s sessions and can end the others', async () => {
+    const u = await makeUser(env);
+    const other = await makeUser(env);
+    const a = await loginAs(env, u.username);
+    const b = await loginAs(env, u.username);
+    const stranger = await loginAs(env, other.username);
+    expect((await (await anonClient(env)).get('/api/auth/sessions')).status).toBe(401);
+
+    const list = await a.get('/api/auth/sessions').expect(200);
+    expect(list.body.items).toHaveLength(2);
+    const current = list.body.items.find((s: { current: boolean }) => s.current);
+    const elsewhere = list.body.items.find((s: { current: boolean }) => !s.current);
+    expect(current.device).toBeTruthy();
+    await a.post(`/api/auth/sessions/${current.id}/revoke`).expect(400);
+    const strangerSessions = await stranger.get('/api/auth/sessions').expect(200);
+    await a.post(`/api/auth/sessions/${strangerSessions.body.items[0].id}/revoke`).expect(404);
+    await a.post(`/api/auth/sessions/${elsewhere.id}/revoke`).expect(200);
+    expect((await b.get('/api/auth/me')).status).toBe(401);
+    expect((await a.get('/api/auth/me')).status).toBe(200);
+
+    const again = await loginAs(env, u.username);
+    await a.post('/api/auth/sessions/revoke-others').expect(200);
+    expect((await again.get('/api/auth/me')).status).toBe(401);
+    const left = await a.get('/api/auth/sessions').expect(200);
+    expect(left.body.items).toHaveLength(1);
+    expect(left.body.items[0].current).toBe(true);
+  });
+
+  it('shows the person’s own sign-in activity', async () => {
+    const u = await makeUser(env);
+    const c = await loginAs(env, u.username);
+    await c.patch('/api/auth/profile', { displayName: 'Activity Person' }).expect(200);
+    const activity = await c.get('/api/auth/activity').expect(200);
+    const actions = activity.body.items.map((i: { action: string }) => i.action);
+    expect(actions).toContain('auth.login');
+    expect(actions).toContain('auth.profile_update');
+    expect(activity.body.items.every((i: { ip: string | null }) => !JSON.stringify(i).includes('password'))).toBe(true);
+  });
+
+  it('skips announcement and event notices the person has turned off', async () => {
+    const u = await makeUser(env);
+    const c = await loginAs(env, u.username);
+    await c.patch('/api/auth/profile', { notifyAnnouncements: false, notifyEvents: false }).expect(200);
+    await notify(env.db, [u.userId], { type: 'announcement.published', title: 'Synod notice', dedupeKey: `ann-${u.userId}` });
+    await notify(env.db, [u.userId], { type: 'event.reminder', title: 'Synod reminder', dedupeKey: `ev-${u.userId}` });
+    await notify(env.db, [u.userId], { type: 'payroll.payslip', title: 'Payslip ready', dedupeKey: `pay-${u.userId}` });
+    const rows = await env.db.select().from(notifications).where(eq(notifications.userId, u.userId));
+    expect(rows.map((r) => r.type)).toEqual(['payroll.payslip']);
   });
 });
 

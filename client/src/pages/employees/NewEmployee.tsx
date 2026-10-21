@@ -111,7 +111,7 @@ export function NewEmployeePage() {
               )}
             </Field>
             <Field label="Work location" error={e.workLocation}>
-              {(id) => <Input id={id} {...bind('workLocation')} maxLength={160} placeholder="e.g. Lilongwe head office" />}
+              {(id) => <Input id={id} {...bind('workLocation')} maxLength={160} placeholder="e.g. St Mark's, Mzuzu" />}
             </Field>
             <Field label="Assigned location" error={e.locationId}>
               {(id) => (

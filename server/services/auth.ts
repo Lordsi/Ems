@@ -1,7 +1,8 @@
 import { z } from 'zod';
-import { and, eq, isNull, or, sql } from 'drizzle-orm';
+import { and, desc, eq, isNull, or, sql } from 'drizzle-orm';
 import {
   approvalRequests,
+  auditLogs,
   departments,
   employees,
   employmentGrades,
@@ -16,7 +17,8 @@ import {
 } from '../db/schema';
 import type { Db, Tx } from '../db/client';
 import type { Ctx, RequestMeta } from '../context';
-import { AppError, badRequest, conflict, forbidden, unauthorized } from '../lib/errors';
+import { config } from '../config';
+import { AppError, badRequest, conflict, forbidden, notFound, unauthorized } from '../lib/errors';
 import { burnPasswordCheck, decrypt, encrypt, hashPassword, sha256, verifyPassword } from '../lib/crypto';
 import {
   parse,
@@ -36,7 +38,7 @@ import { addYears, todayIso } from '../lib/dates';
 import { createSession, loadActor, revokeAllSessions, revokeSession, type LoadedSession } from '../auth/sessions';
 import { generateTotpSecret, totpEnrollment, verifyTotp } from '../auth/totp';
 import { requireActor, requireRecentAuth } from '../authz/policy';
-import { audit } from './audit';
+import { audit, diff } from './audit';
 import { notify, usersWithPermission } from './notifications';
 import { getSetting, getSettings } from './settings';
 import { PRIVILEGED_ROLES, type RoleKey } from '../../shared/permissions';
@@ -316,6 +318,18 @@ export async function me(ctx: Ctx) {
   if (!ctx.actor) throw unauthorized();
   const a = ctx.actor;
   const settings = await getSettings(ctx.db);
+  const [account] = await ctx.db
+    .select({
+      phone: users.phone,
+      preferredLanguage: users.preferredLanguage,
+      notifyAnnouncements: users.notifyAnnouncements,
+      notifyEvents: users.notifyEvents,
+      lastLoginAt: users.lastLoginAt,
+      passwordChangedAt: users.passwordChangedAt,
+      createdAt: users.createdAt,
+    })
+    .from(users)
+    .where(eq(users.id, a.userId));
   let employee: Record<string, unknown> | null = null;
   if (a.employeeId) {
     const [e] = await ctx.db
@@ -347,10 +361,168 @@ export async function me(ctx: Ctx) {
       mustChangePassword: a.mustChangePassword,
       mfaSetupRequired: privileged && settings['security.require_mfa_for_privileged'] && !a.mfaEnabled,
       scopes: a.scopes,
+      phone: account?.phone ?? null,
+      preferredLanguage: account?.preferredLanguage ?? 'en',
+      notifyAnnouncements: account?.notifyAnnouncements ?? true,
+      notifyEvents: account?.notifyEvents ?? true,
+      lastLoginAt: account?.lastLoginAt ?? null,
+      passwordChangedAt: account?.passwordChangedAt ?? null,
+      createdAt: account?.createdAt ?? null,
     },
     employee,
     org: { name: settings['org.name'], currency: settings['org.currency'] },
   };
+}
+
+const LANGUAGES = ['en', 'ny', 'tum'] as const;
+
+const profilePatchSchema = z
+  .object({
+    displayName: zTrim(120).optional(),
+    phone: z
+      .union([zPhone, z.literal(''), z.null()])
+      .optional()
+      .transform((v) => (v === undefined ? undefined : v ? v : null)),
+    preferredLanguage: z.enum(LANGUAGES).optional(),
+    notifyAnnouncements: z.boolean().optional(),
+    notifyEvents: z.boolean().optional(),
+  })
+  .strict()
+  .refine((v) => Object.values(v).some((value) => value !== undefined), { message: 'Nothing to update', path: ['_'] });
+
+/** The signed-in person updates their own account profile. Email and username stay with an administrator. */
+export async function updateProfile(ctx: Ctx, input: unknown) {
+  requireActor(ctx);
+  const body = parse(profilePatchSchema, input);
+  return ctx.db.transaction(async (tx) => {
+    const [before] = await tx
+      .select({
+        displayName: users.displayName,
+        phone: users.phone,
+        preferredLanguage: users.preferredLanguage,
+        notifyAnnouncements: users.notifyAnnouncements,
+        notifyEvents: users.notifyEvents,
+      })
+      .from(users)
+      .where(eq(users.id, ctx.actor.userId));
+    const patch = Object.fromEntries(Object.entries(body).filter(([, value]) => value !== undefined));
+    const changes = diff(before, patch);
+    if (changes.changed.length) {
+      await tx.update(users).set({ ...patch, updatedAt: ctx.now() }).where(eq(users.id, ctx.actor.userId));
+      await audit(tx, ctx, {
+        action: 'auth.profile_update',
+        targetType: 'user',
+        targetId: ctx.actor.userId,
+        oldValues: changes.oldValues,
+        newValues: changes.newValues,
+      });
+    }
+    const [after] = await tx
+      .select({
+        displayName: users.displayName,
+        phone: users.phone,
+        preferredLanguage: users.preferredLanguage,
+        notifyAnnouncements: users.notifyAnnouncements,
+        notifyEvents: users.notifyEvents,
+      })
+      .from(users)
+      .where(eq(users.id, ctx.actor.userId));
+    return after;
+  });
+}
+
+/** A short label so a person can recognise a browser without reading the raw user-agent string. */
+export function describeClient(userAgent: string | null): string {
+  if (!userAgent) return 'Unknown device';
+  const browser = /Edg\//.test(userAgent)
+    ? 'Edge'
+    : /Chrome\//.test(userAgent)
+      ? 'Chrome'
+      : /Firefox\//.test(userAgent)
+        ? 'Firefox'
+        : /Safari\//.test(userAgent)
+          ? 'Safari'
+          : 'Browser';
+  const os = /Windows/.test(userAgent)
+    ? 'Windows'
+    : /Mac OS|Macintosh/.test(userAgent)
+      ? 'macOS'
+      : /Android/.test(userAgent)
+        ? 'Android'
+        : /iPhone|iPad/.test(userAgent)
+          ? 'iOS'
+          : /Linux/.test(userAgent)
+            ? 'Linux'
+            : 'Unknown system';
+  return `${browser} on ${os}`;
+}
+
+export async function listSessions(ctx: Ctx) {
+  requireActor(ctx);
+  const idleBefore = new Date(ctx.now().getTime() - config.session.idleMinutes * 60_000);
+  const rows = await ctx.db
+    .select({
+      id: sessions.id,
+      createdAt: sessions.createdAt,
+      lastSeenAt: sessions.lastSeenAt,
+      expiresAt: sessions.expiresAt,
+      ip: sessions.ip,
+      userAgent: sessions.userAgent,
+    })
+    .from(sessions)
+    .where(
+      and(
+        eq(sessions.userId, ctx.actor.userId),
+        isNull(sessions.revokedAt),
+        sql`${sessions.expiresAt} > ${ctx.now()}`,
+        sql`${sessions.lastSeenAt} > ${idleBefore}`,
+      ),
+    )
+    .orderBy(desc(sessions.lastSeenAt));
+  return {
+    items: rows.map((s) => ({
+      ...s,
+      current: s.id === ctx.actor.sessionId,
+      device: describeClient(s.userAgent),
+    })),
+  };
+}
+
+export async function revokeOwnSession(ctx: Ctx, sessionId: string) {
+  requireActor(ctx);
+  if (sessionId === ctx.actor.sessionId) throw badRequest('Sign out to end this session');
+  const [row] = await ctx.db
+    .select({ id: sessions.id, revokedAt: sessions.revokedAt })
+    .from(sessions)
+    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, ctx.actor.userId)));
+  if (!row || row.revokedAt) throw notFound('Session not found');
+  await revokeSession(ctx.db, sessionId);
+  await audit(ctx.db, ctx, { action: 'auth.session_revoke', targetType: 'session', targetId: sessionId });
+  return { ok: true };
+}
+
+export async function revokeOtherSessions(ctx: Ctx) {
+  requireActor(ctx);
+  await revokeAllSessions(ctx.db, ctx.actor.userId, ctx.actor.sessionId);
+  await audit(ctx.db, ctx, { action: 'auth.session_revoke', targetType: 'user', targetId: ctx.actor.userId, newValues: { others: true } });
+  return { ok: true };
+}
+
+export async function ownSecurityActivity(ctx: Ctx) {
+  requireActor(ctx);
+  const items = await ctx.db
+    .select({
+      id: auditLogs.id,
+      occurredAt: auditLogs.occurredAt,
+      action: auditLogs.action,
+      outcome: auditLogs.outcome,
+      ip: auditLogs.ip,
+    })
+    .from(auditLogs)
+    .where(and(eq(auditLogs.actorUserId, ctx.actor.userId), sql`${auditLogs.action} like 'auth.%'`))
+    .orderBy(desc(auditLogs.occurredAt))
+    .limit(20);
+  return { items };
 }
 
 /* ------------------------------------------------------------------ */

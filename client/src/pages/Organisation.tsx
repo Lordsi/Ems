@@ -206,7 +206,7 @@ export function OrganisationPage() {
     <div className="space-y-6">
       <PageHeader
         title="Organisation"
-        description="Departments, work locations, job titles and grades. Archived items stay on historical records but cannot be newly assigned."
+        description="Departments, parishes and other stations, job titles and grades. The parishes, cathedral, diocesan office and St Peter's Mission Hospital of the Anglican Diocese of Northern Malawi are loaded automatically. Archived items stay on historical records but cannot be newly assigned."
         actions={
           manage && (
             <Button icon={<Plus className="size-4" />} onClick={() => setModal({ kind: tab })}>
@@ -249,7 +249,7 @@ export function OrganisationPage() {
                     {d.description && <p className="text-xs text-slate-500">{d.description}</p>}
                   </Td>
                   <Td className="hidden md:table-cell">{d.headName ?? '—'}</Td>
-                  <Td className="hidden text-xs text-slate-600 lg:table-cell">{d.locations.map((l) => l.name).join(', ') || '—'}</Td>
+                  <Td className="hidden text-xs text-slate-600 lg:table-cell">{d.locations.map((l) => l.name).join(', ') || 'All parishes and stations'}</Td>
                   <Td align="right" className="tabular-nums">{d.activeEmployees}</Td>
                   <Td>
                     <StatusBadge status={d.status} />

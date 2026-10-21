@@ -17,6 +17,13 @@ export interface Me {
     mustChangePassword: boolean;
     mfaSetupRequired: boolean;
     scopes: { id: string; scopeType: string; departmentId: string | null; locationId: string | null }[];
+    phone: string | null;
+    preferredLanguage: 'en' | 'ny' | 'tum';
+    notifyAnnouncements: boolean;
+    notifyEvents: boolean;
+    lastLoginAt: string | null;
+    passwordChangedAt: string | null;
+    createdAt: string | null;
   };
   employee: {
     id: string;

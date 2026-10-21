@@ -1,7 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eq, sql } from 'drizzle-orm';
 import { anonClient, loginAs, makeUser, registrationBody, setupEnv, type Client, type MadeUser, type TestEnv } from './helpers';
-import { approvalRequests, employees, employmentHistory, payrollPeriods } from '../server/db/schema';
+import { approvalRequests, employees, employmentHistory, payrollPeriods, systemSettings } from '../server/db/schema';
+import { seedBase } from '../server/db/seed';
 
 let env: TestEnv;
 let sa: MadeUser, admin: MadeUser;
@@ -92,10 +93,10 @@ describe('verification and employment numbers', () => {
 
     const reg = await registerPending('MED');
     const pending = await c.admin.get(`/api/employees/${reg.employeeId}`).expect(200);
-    expect(pending.body.workLocation).toBe('Kanengo depot, Lilongwe');
+    expect(pending.body.workLocation).toBe("St Mark's parish, Mzuzu");
     expect(pending.body.location).toBeNull();
     const [approval] = await env.db.select().from(approvalRequests).where(eq(approvalRequests.targetId, reg.employeeId));
-    expect(approval.payload).toMatchObject({ workLocation: 'Kanengo depot, Lilongwe' });
+    expect(approval.payload).toMatchObject({ workLocation: "St Mark's parish, Mzuzu" });
 
     await c.admin.post(`/api/employees/${reg.employeeId}/verify`, { decision: 'approve' }).expect(200);
     await reg.client.patch(`/api/employees/${reg.employeeId}`, { changes: { workLocation: 'Area 18 clinic' } }).expect(200);
@@ -266,5 +267,34 @@ describe('organisation listings', () => {
     expect(clgRow.headName).toBe(`Legal ${head.username}`);
     const locs = await c.sa.get('/api/locations').expect(200);
     expect(locs.body.find((l: { code: string }) => l.code === 'SITE-A').activeEmployees).toBe(siteA);
+  });
+
+  it('loads the parishes and stations of the Anglican Diocese of Northern Malawi', async () => {
+    const info = await c.sa.get('/api/public/info').expect(200);
+    expect(info.body.orgName).toBe('Anglican Diocese of Northern Malawi');
+    const locs = await c.sa.get('/api/locations').expect(200);
+    const byCode = Object.fromEntries(locs.body.map((l: { code: string; name: string; address: string | null }) => [l.code, l]));
+    for (const code of ['DIO-OFFICE', 'STP-CATH', 'STP-HOSP', 'SMK-MZUZU', 'SGE-NKBAY', 'SDU-MZIMBA', 'SAM-KARONG', 'STI-CHITIP', 'SMY-SAME']) {
+      expect(byCode[code], code).toBeTruthy();
+    }
+    expect(byCode['STP-CATH'].address).toMatch(/Likoma/);
+    expect(byCode['SMK-MZUZU'].name).toMatch(/Mzuzu/);
+    expect(byCode['DIO-OFFICE'].address).toMatch(/P\.O\. Box 120/);
+    const deps = await c.sa.get('/api/departments').expect(200);
+    expect(deps.body.find((d: { code: string }) => d.code === 'MED').description).toMatch(/St Peter's Mission Hospital/);
+    expect(deps.body.find((d: { code: string }) => d.code === 'ADM').description).toMatch(/Mzuzu/);
+    expect(locs.body.some((l: { name: string }) => /Lilongwe|Blantyre/.test(l.name))).toBe(false);
+  });
+
+  it('replaces the generic organisation name and keeps a name the diocese has chosen', async () => {
+    await env.db.update(systemSettings).set({ value: 'Employee Management System' }).where(eq(systemSettings.key, 'org.name'));
+    await seedBase(env.db);
+    expect((await c.sa.get('/api/public/info')).body.orgName).toBe('Anglican Diocese of Northern Malawi');
+    expect((await c.sa.get('/api/settings')).body['org.address']).toMatch(/Mzuzu/);
+
+    await env.db.update(systemSettings).set({ value: "St Mark's Mzuzu" }).where(eq(systemSettings.key, 'org.name'));
+    await seedBase(env.db);
+    expect((await c.sa.get('/api/public/info')).body.orgName).toBe("St Mark's Mzuzu");
+    await env.db.update(systemSettings).set({ value: 'Anglican Diocese of Northern Malawi' }).where(eq(systemSettings.key, 'org.name'));
   });
 });

@@ -181,6 +181,9 @@ export function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   useEffect(() => setMobileOpen(false), [location.pathname]);
+  useEffect(() => {
+    document.title = me.org.name;
+  }, [me.org.name]);
 
   return (
     <div className="min-h-screen">

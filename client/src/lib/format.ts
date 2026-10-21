@@ -125,6 +125,21 @@ const LABELS: Record<string, string> = {
   qualification: 'Qualification',
   medical: 'Medical',
   attachment: 'Attachment',
+  en: 'English',
+  ny: 'Chichewa',
+  tum: 'Chitumbuka',
+  'auth.login': 'Signed in',
+  'auth.login.password_ok': 'Password accepted',
+  'auth.logout': 'Signed out',
+  'auth.password_change': 'Password changed',
+  'auth.mfa': 'Verification code',
+  'auth.mfa_enabled': 'Two-factor enabled',
+  'auth.mfa_disabled': 'Two-factor disabled',
+  'auth.reauth': 'Password confirmed',
+  'auth.register': 'Registered',
+  'auth.profile_update': 'Profile updated',
+  'auth.session_revoke': 'Session ended',
+  'auth.invitation_accepted': 'Invitation accepted',
 };
 
 export function label(value: string | null | undefined): string {

@@ -24,9 +24,9 @@ export type SettingKey = keyof typeof SETTINGS_SCHEMA;
 export type Settings = { [K in SettingKey]: z.infer<(typeof SETTINGS_SCHEMA)[K]> };
 
 export const SETTINGS_DEFAULTS: Settings = {
-  'org.name': 'Employee Management System',
-  'org.address': '',
-  'org.phone': '',
+  'org.name': 'Anglican Diocese of Northern Malawi',
+  'org.address': 'P.O. Box 120, Mzuzu, Malawi',
+  'org.phone': '+265 331 486',
   'org.email': '',
   'org.currency': 'MWK',
   'registration.open': true,

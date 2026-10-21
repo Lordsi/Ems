@@ -18,8 +18,23 @@ export interface NotificationInput {
 }
 
 export async function notify(tx: Tx, userIds: (string | null | undefined)[], n: NotificationInput): Promise<number> {
-  const ids = [...new Set(userIds.filter((x): x is string => !!x))];
+  let ids = [...new Set(userIds.filter((x): x is string => !!x))];
   if (!ids.length) return 0;
+  // Announcements and events can be muted from the account page. Employment, payroll,
+  // approval and security notices are always delivered.
+  const preference = n.type.startsWith('announcement.')
+    ? users.notifyAnnouncements
+    : n.type.startsWith('event.')
+      ? users.notifyEvents
+      : null;
+  if (preference) {
+    const allowed = await tx
+      .select({ id: users.id })
+      .from(users)
+      .where(and(inArray(users.id, ids), eq(preference, true)));
+    ids = allowed.map((r) => r.id);
+    if (!ids.length) return 0;
+  }
   const rows = await tx
     .insert(notifications)
     .values(ids.map((userId) => ({ userId, type: n.type, title: n.title, body: n.body ?? null, link: n.link ?? null, dedupeKey: n.dedupeKey ?? null })))

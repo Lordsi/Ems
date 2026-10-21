@@ -11,6 +11,7 @@ import * as users from './services/users';
 import * as org from './services/org';
 import * as approvals from './services/approvals';
 import * as payroll from './services/payroll';
+import * as accounts from './services/payrollAccounts';
 import * as retirement from './services/retirement';
 import * as comms from './services/comms';
 import * as docs from './services/documents';
@@ -119,6 +120,11 @@ export function buildRouter(opts: { disableRateLimit: boolean }) {
     }),
   );
   r.get('/auth/me', h((ctx) => auth.me(ctx)));
+  r.patch('/auth/profile', h((ctx, req) => auth.updateProfile(ctx, req.body)));
+  r.get('/auth/sessions', h((ctx) => auth.listSessions(ctx)));
+  r.post('/auth/sessions/revoke-others', h((ctx) => auth.revokeOtherSessions(ctx)));
+  r.post('/auth/sessions/:id/revoke', h((ctx, req) => auth.revokeOwnSession(ctx, p(req, 'id'))));
+  r.get('/auth/activity', h((ctx) => auth.ownSecurityActivity(ctx)));
   r.post('/auth/reauth', sensitiveLimit, h((ctx, req) => auth.reauthenticate(ctx, req.body)));
   r.post('/auth/password', sensitiveLimit, h((ctx, req) => auth.changePassword(ctx, req.body)));
   r.post('/auth/mfa/setup', sensitiveLimit, h((ctx) => auth.mfaSetup(ctx)));
@@ -215,6 +221,16 @@ export function buildRouter(opts: { disableRateLimit: boolean }) {
   r.post('/payroll/periods/:id/generate-drafts', h((ctx, req) => payroll.generateDrafts(ctx, p(req, 'id'))));
   r.post('/payroll/periods/:id/payslips', h((ctx, req) => payroll.issuePayslipsForPeriod(ctx, p(req, 'id'))));
   r.get('/payroll/periods/:id/export.csv', csv('payroll.csv', (ctx, req) => payroll.exportPeriodCsv(ctx, p(req, 'id'))));
+  r.get('/payroll/periods/:id/checklist', h((ctx, req) => accounts.periodChecklist(ctx, p(req, 'id'))));
+  r.get('/payroll/periods/:id/remittances', h((ctx, req) => accounts.periodRemittances(ctx, p(req, 'id'))));
+  r.get('/payroll/periods/:id/remittances.csv', csv('remittances.csv', (ctx, req) => accounts.periodRemittancesCsv(ctx, p(req, 'id'))));
+  r.get('/payroll/periods/:id/allocation', h((ctx, req) => accounts.periodAllocation(ctx, p(req, 'id'))));
+  r.get('/payroll/periods/:id/allocation.csv', csv('cost-allocation.csv', (ctx, req) => accounts.periodAllocationCsv(ctx, p(req, 'id'))));
+  r.get('/payroll/periods/:id/journal', h((ctx, req) => accounts.periodJournal(ctx, p(req, 'id'))));
+  r.get('/payroll/periods/:id/journal.csv', csv('salaries-journal.csv', (ctx, req) => accounts.periodJournalCsv(ctx, p(req, 'id'))));
+  r.get('/payroll/periods/:id/variance', h((ctx, req) => accounts.periodVariance(ctx, p(req, 'id'), req.query)));
+  r.get('/payroll/periods/:id/register.csv', csv('payroll-register.csv', (ctx, req) => accounts.periodRegisterCsv(ctx, p(req, 'id'))));
+  r.post('/payroll/periods/:id/pay-run', h((ctx, req) => accounts.markPeriodPaid(ctx, p(req, 'id'), req.body)));
   r.post('/payroll/records', h((ctx, req) => payroll.createRecord(ctx, req.body)));
   r.get('/payroll/records/:id', h((ctx, req) => payroll.getRecord(ctx, p(req, 'id'))));
   r.put('/payroll/records/:id', h((ctx, req) => payroll.updateRecord(ctx, p(req, 'id'), req.body)));
