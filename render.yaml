@@ -1,0 +1,53 @@
+# Render Blueprint: web service + managed PostgreSQL + hourly scheduled jobs.
+# See README.md → "Deploying to Render". Validate with: render blueprints validate
+
+envVarGroups:
+  - name: ems-shared
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: APP_SECRET
+        generateValue: true
+
+databases:
+  - name: ems-db
+    databaseName: ems
+    user: ems
+    plan: basic-256mb
+    postgresMajorVersion: "17"
+
+services:
+  - type: web
+    name: ems
+    runtime: node
+    plan: starter
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - fromGroup: ems-shared
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ems-db
+          property: connectionString
+      - key: RUN_JOBS_IN_PROCESS
+        value: "false"
+      - key: NODE_VERSION
+        value: "22"
+
+  - type: cron
+    name: ems-jobs
+    runtime: node
+    plan: starter
+    schedule: "5 * * * *"
+    buildCommand: npm ci --include=dev && npm run build:server
+    startCommand: npm run jobs:run:prod
+    envVars:
+      - fromGroup: ems-shared
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ems-db
+          property: connectionString
+      - key: NODE_VERSION
+        value: "22"

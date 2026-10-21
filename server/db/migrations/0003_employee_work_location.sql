@@ -1,0 +1,1 @@
+ALTER TABLE "employees" ADD COLUMN "work_location" varchar(160);

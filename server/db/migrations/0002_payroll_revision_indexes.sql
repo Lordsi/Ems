@@ -1,0 +1,3 @@
+DROP INDEX "payroll_records_one_live_uq";--> statement-breakpoint
+CREATE UNIQUE INDEX "payroll_records_one_open_uq" ON "payroll_records" USING btree ("employee_id","period_id") WHERE "payroll_records"."status" in ('draft','pending_approval');--> statement-breakpoint
+CREATE UNIQUE INDEX "payroll_records_one_approved_uq" ON "payroll_records" USING btree ("employee_id","period_id") WHERE "payroll_records"."status" = 'approved';
