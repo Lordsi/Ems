@@ -1,14 +1,47 @@
+import { sql } from 'drizzle-orm';
 import { config } from './config';
-import { createDb, runMigrations } from './db/client';
+import { createDb, runMigrations, type DbHandle } from './db/client';
 import { seedBase } from './db/seed';
 import { createApp } from './app';
 import { countActiveSuperAdmins, provisionSuperAdmin } from './services/auth';
 import { runScheduledJobs } from './services/jobs';
 
+/** Host and port only, so a connection string with a password can be logged. */
+function describeDatabaseHost(url: string | undefined): string {
+  try {
+    const u = new URL(url ?? '');
+    return `${u.hostname}:${u.port || '5432'}`;
+  } catch {
+    return 'an unparseable DATABASE_URL';
+  }
+}
+
+/** Fail quickly with a hint instead of letting the first migration query hang on an unreachable host. */
+async function checkDatabaseConnection(handle: DbHandle): Promise<void> {
+  if (handle.kind !== 'pg') return;
+  try {
+    await handle.db.execute(sql`select 1`);
+  } catch (err) {
+    // Drizzle wraps driver errors as "Failed query: ..." with the real reason in `cause`.
+    const root = err instanceof Error && err.cause instanceof Error ? err.cause : err;
+    const message = root instanceof Error ? root.message : String(root);
+    const hints = [`Could not connect to ${describeDatabaseHost(config.databaseUrl)}: ${message}`];
+    if (/timeout|ENETUNREACH|EHOSTUNREACH|ENOTFOUND|ECONNREFUSED/i.test(message)) {
+      hints.push('Check that DATABASE_URL is reachable from this network. Supabase: the direct connection (db.<project>.supabase.co) is IPv6-only; use the Session pooler string (aws-<region>.pooler.supabase.com:5432, user postgres.<project>) and make sure the project is not paused.');
+    }
+    if (/password|authentication|SASL/i.test(message)) {
+      hints.push('Check the database user and password in DATABASE_URL; characters such as @ # : / in the password must be URL-encoded.');
+    }
+    throw new Error(hints.join('\n'));
+  }
+}
+
 async function main() {
   if (config.isProd && !config.databaseUrl) throw new Error('DATABASE_URL is required in production');
   const handle = await createDb({ url: config.databaseUrl, pgliteDir: config.pgliteDir });
-  console.log(`[ems] database: ${handle.kind === 'pg' ? 'PostgreSQL' : `PGlite (${config.pgliteDir})`}`);
+  console.log(`[ems] database: ${handle.kind === 'pg' ? `PostgreSQL at ${describeDatabaseHost(config.databaseUrl)}` : `PGlite (${config.pgliteDir})`}`);
+  await checkDatabaseConnection(handle);
+  console.log('[ems] applying migrations and reference data');
   await runMigrations(handle);
   await seedBase(handle.db);
 
