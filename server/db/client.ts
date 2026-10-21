@@ -39,6 +39,9 @@ export async function createDb(opts: { url?: string; pgliteDir?: string; memory?
       connectionString: opts.url,
       max: Number(process.env.DB_POOL_MAX ?? 10),
       ssl: sslDisabled ? undefined : { rejectUnauthorized: false },
+      // Without this a host that silently drops packets (for example an IPv6-only address from an
+      // IPv4 network) keeps the start-up waiting for the OS TCP timeout, about two minutes.
+      connectionTimeoutMillis: Number(process.env.DB_CONNECT_TIMEOUT_MS ?? 15_000),
     });
     const db = drizzle(pool, { schema }) as unknown as Db;
     return { db, kind: 'pg', close: () => pool.end() };
