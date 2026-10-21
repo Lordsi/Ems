@@ -119,6 +119,11 @@ export function buildRouter(opts: { disableRateLimit: boolean }) {
     }),
   );
   r.get('/auth/me', h((ctx) => auth.me(ctx)));
+  r.patch('/auth/profile', h((ctx, req) => auth.updateProfile(ctx, req.body)));
+  r.get('/auth/sessions', h((ctx) => auth.listSessions(ctx)));
+  r.post('/auth/sessions/revoke-others', h((ctx) => auth.revokeOtherSessions(ctx)));
+  r.post('/auth/sessions/:id/revoke', h((ctx, req) => auth.revokeOwnSession(ctx, p(req, 'id'))));
+  r.get('/auth/activity', h((ctx) => auth.ownSecurityActivity(ctx)));
   r.post('/auth/reauth', sensitiveLimit, h((ctx, req) => auth.reauthenticate(ctx, req.body)));
   r.post('/auth/password', sensitiveLimit, h((ctx, req) => auth.changePassword(ctx, req.body)));
   r.post('/auth/mfa/setup', sensitiveLimit, h((ctx) => auth.mfaSetup(ctx)));

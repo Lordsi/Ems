@@ -45,7 +45,17 @@ export interface EmployeeDetail extends EmployeeSummary {
   } | null;
   personal: { dateOfBirth: string | null; age: number | null; phone?: string | null; personalEmail?: string | null; address?: string | null } | null;
   nextOfKin?: { fullName: string; relationship: string; phone: string; address: string | null } | null;
-  account: { id: string; username: string; email: string; status: string } | null;
+  account: {
+    id: string;
+    username: string;
+    email: string;
+    status: string;
+    phone: string | null;
+    preferredLanguage: string;
+    mfaEnabled: boolean;
+    lastLoginAt: string | null;
+    createdAt: string;
+  } | null;
   pendingInvitation: { email: string; expiresAt: string } | null;
   access: {
     self: boolean;

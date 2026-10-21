@@ -50,6 +50,12 @@ export const users = pgTable(
     lastLoginAt: ts('last_login_at'),
     passwordChangedAt: ts('password_changed_at'),
     mustChangePassword: boolean('must_change_password').notNull().default(false),
+    /** Contact number the person maintains on their own account. Distinct from the HR-held employee phone. */
+    phone: varchar('phone', { length: 40 }),
+    /** en English, ny Chichewa, tum Chitumbuka. Used for notices; the interface stays in English. */
+    preferredLanguage: varchar('preferred_language', { length: 16 }).notNull().default('en'),
+    notifyAnnouncements: boolean('notify_announcements').notNull().default(true),
+    notifyEvents: boolean('notify_events').notNull().default(true),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -57,6 +63,7 @@ export const users = pgTable(
     uniqueIndex('users_email_lower_uq').on(sql`lower(${t.email})`),
     uniqueIndex('users_username_lower_uq').on(sql`lower(${t.username})`),
     check('users_status_ck', sql`${t.status} in ('pending_verification','active','suspended','deactivated')`),
+    check('users_language_ck', sql`${t.preferredLanguage} in ('en','ny','tum')`),
   ],
 );
 

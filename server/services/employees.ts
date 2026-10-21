@@ -286,7 +286,20 @@ export async function getEmployee(ctx: Ctx, id: string) {
   const [nok] = access.nextOfKin ? await ctx.db.select().from(nextOfKin).where(eq(nextOfKin.employeeId, id)) : [];
   const [account] =
     access.account && emp.userId
-      ? await ctx.db.select({ id: users.id, username: users.username, email: users.email, status: users.status }).from(users).where(eq(users.id, emp.userId))
+      ? await ctx.db
+          .select({
+            id: users.id,
+            username: users.username,
+            email: users.email,
+            status: users.status,
+            phone: users.phone,
+            preferredLanguage: users.preferredLanguage,
+            mfaEnabled: users.mfaEnabled,
+            lastLoginAt: users.lastLoginAt,
+            createdAt: users.createdAt,
+          })
+          .from(users)
+          .where(eq(users.id, emp.userId))
       : [];
   const [pendingInvite] =
     !emp.userId && has(ctx.actor, 'employee.create')

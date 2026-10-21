@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 
@@ -8,6 +8,9 @@ export function usePublicInfo() {
 
 export function AuthShell({ title, subtitle, children, wide }: { title: string; subtitle?: ReactNode; children: ReactNode; wide?: boolean }) {
   const { data } = usePublicInfo();
+  useEffect(() => {
+    if (data?.orgName) document.title = data.orgName;
+  }, [data?.orgName]);
   return (
     <div className="flex min-h-screen">
       <div className="relative hidden w-[42%] max-w-xl flex-col justify-between overflow-hidden bg-brand-900 p-10 text-white lg:flex">
@@ -19,7 +22,7 @@ export function AuthShell({ title, subtitle, children, wide }: { title: string; 
               <path d="M9 10h14M9 16h10M9 22h14" stroke="#fff" strokeWidth="3" strokeLinecap="round" />
             </svg>
           </span>
-          <span className="text-lg font-semibold">{data?.orgName ?? 'Employee Management System'}</span>
+          <span className="text-lg font-semibold">{data?.orgName ?? 'Anglican Diocese of Northern Malawi'}</span>
         </div>
         <div className="relative">
           <h2 className="text-3xl font-semibold leading-tight">One trusted record for every employee.</h2>
@@ -32,7 +35,7 @@ export function AuthShell({ title, subtitle, children, wide }: { title: string; 
       <div className="flex flex-1 items-start justify-center overflow-y-auto px-4 py-10 sm:items-center sm:px-8">
         <div className={wide ? 'w-full max-w-2xl' : 'w-full max-w-sm'}>
           <div className="mb-8 lg:hidden">
-            <span className="text-lg font-semibold text-brand-800">{data?.orgName ?? 'Employee Management System'}</span>
+            <span className="text-lg font-semibold text-brand-800">{data?.orgName ?? 'Anglican Diocese of Northern Malawi'}</span>
           </div>
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{title}</h1>
           {subtitle && <p className="mt-1.5 text-sm text-slate-500">{subtitle}</p>}

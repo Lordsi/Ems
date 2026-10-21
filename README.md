@@ -53,7 +53,7 @@ This creates locations, job titles and grades, plus 12 employees. It also create
 | `demo.admin` | Administrator |
 | `demo.finance` | Finance Officer |
 | `demo.finance2` | Finance Officer, used as the second approver |
-| `demo.moderator` | Moderator, scoped to Construction at Site A plus direct reports |
+| `demo.moderator` | Moderator, scoped to Construction at St Mark's, Mzuzu plus direct reports |
 | `demo.employee` | Employee |
 | `demo.pending` | Self-registered account awaiting verification |
 
@@ -121,7 +121,7 @@ No secret is ever needed in frontend code. The client only talks to its own orig
   - Development: `npm run db:migrate`
   - Production build: `npm run db:migrate:prod`
 - **Changing the schema:** edit `schema.ts`, run `npm run db:generate` to create a new SQL migration, review the SQL, commit it, then run the tests.
-- **Reference data** is seeded idempotently on every start: permissions, role mappings, the five initial departments (ADM, CLG, CON, PRT, MED), default settings and a *draft* retirement policy. No user accounts are ever seeded.
+- **Reference data** is seeded idempotently on every start: permissions, role mappings, the five initial departments (ADM, CLG, CON, PRT, MED), the parishes and stations of the Anglican Diocese of Northern Malawi (diocesan office in Mzuzu, St Peter's Cathedral and St Peter's Mission Hospital on Likoma, and the published parishes of the Likoma, Nkhata Bay, Mzuzu, Karonga and Mzimba archdeaconries), default settings and a *draft* retirement policy. A database that still has the placeholder organisation name “Employee Management System” is renamed to **Anglican Diocese of Northern Malawi** on the next start. A name that has already been changed is left as it is. No user accounts are ever seeded.
 
 ### Integrity rules enforced inside the database
 

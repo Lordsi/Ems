@@ -176,7 +176,7 @@ export function RegisterPage() {
                 </Select>
               )}
             </Field>
-            <Field label="Work location" hint="Where you usually work, e.g. Lilongwe head office." error={err('profile', 'workLocation')}>
+            <Field label="Work location" hint="Where you usually work, e.g. St Mark's, Mzuzu or St Peter's Cathedral, Likoma." error={err('profile', 'workLocation')}>
               {(id) => <Input id={id} value={p.workLocation} onChange={set('profile', 'workLocation')} maxLength={160} />}
             </Field>
             <Field label="Job title" error={err('profile', 'jobTitleId')}>

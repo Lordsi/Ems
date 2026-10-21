@@ -29,6 +29,13 @@
       "when": 1791513270603,
       "tag": "0003_employee_work_location",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792607666364,
+      "tag": "0004_account_profile",
+      "breakpoints": true
     }
   ]
 }
