@@ -1,0 +1,16 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+
+# Local databases and uploads
+.data/
+
+# Dependencies and build output
+node_modules/
+dist/
+
+# Tooling
+coverage/
+*.log
+.DS_Store
