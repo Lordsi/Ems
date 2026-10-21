@@ -36,13 +36,36 @@ async function checkDatabaseConnection(handle: DbHandle): Promise<void> {
   }
 }
 
+/** Postgres error codes for "already exists": duplicate_table, duplicate_object, duplicate_function. */
+const ALREADY_EXISTS = new Set(['42P07', '42710', '42723']);
+
+async function applyMigrations(handle: DbHandle): Promise<void> {
+  try {
+    await runMigrations(handle);
+  } catch (err) {
+    const root = err instanceof Error && err.cause instanceof Error ? err.cause : err;
+    const code = root && typeof root === 'object' && 'code' in root ? String((root as { code?: unknown }).code) : '';
+    if (!ALREADY_EXISTS.has(code)) throw err;
+    const message = root instanceof Error ? root.message : String(root);
+    throw new Error(
+      [
+        `Migration failed: ${message}.`,
+        'The database already holds objects that were not created by this application, so the migration journal (schema "drizzle") is missing or behind.',
+        'This happens when the SQL files were run by hand, for example in the Supabase SQL editor, or when a different project shares the database.',
+        'Start from an empty database: in the SQL editor run `drop schema public cascade; create schema public; drop schema if exists drizzle cascade;` (this deletes every table) and redeploy, so the application applies and records its own migrations.',
+      ].join('\n'),
+      { cause: err },
+    );
+  }
+}
+
 async function main() {
   if (config.isProd && !config.databaseUrl) throw new Error('DATABASE_URL is required in production');
   const handle = await createDb({ url: config.databaseUrl, pgliteDir: config.pgliteDir });
   console.log(`[ems] database: ${handle.kind === 'pg' ? `PostgreSQL at ${describeDatabaseHost(config.databaseUrl)}` : `PGlite (${config.pgliteDir})`}`);
   await checkDatabaseConnection(handle);
   console.log('[ems] applying migrations and reference data');
-  await runMigrations(handle);
+  await applyMigrations(handle);
   await seedBase(handle.db);
 
   // One-time bootstrap: only acts when no active super admin exists. Remove the variables afterwards.
