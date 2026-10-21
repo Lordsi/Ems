@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router';
 import { Monitor, ShieldCheck, ShieldOff } from 'lucide-react';
 import { ROLE_META } from '../../../shared/permissions';
@@ -20,6 +21,7 @@ function PasswordCard() {
   const [mismatch, setMismatch] = useState(false);
   const change = useAction((body: { currentPassword: string; newPassword: string }) => api.post('/auth/password', body), {
     success: 'Password changed. Your other sessions have been signed out.',
+    invalidate: ['/auth/sessions', '/auth/activity'],
     onSuccess: () => setF({ currentPassword: '', newPassword: '', confirm: '' }),
   });
   const submit = (e: FormEvent) => {
@@ -51,8 +53,9 @@ function PasswordCard() {
 
 function MfaCard() {
   const { me, refresh } = useAuth();
+  const qc = useQueryClient();
   const [enrolling, setEnrolling] = useState(false);
-  const disable = useAction(() => api.post('/auth/mfa/disable'), { success: 'Two-factor authentication disabled' });
+  const disable = useAction(() => api.post('/auth/mfa/disable'), { success: 'Two-factor authentication disabled', invalidate: ['/auth/activity'] });
   const enabled = !!me?.user.mfaEnabled;
   const privileged = me?.user.roles.some((r) => r !== 'employee');
   return (
@@ -85,6 +88,7 @@ function MfaCard() {
             onDone={() => {
               setEnrolling(false);
               void refresh();
+              void qc.invalidateQueries({ queryKey: ['/auth/activity'] });
             }}
           />
         </Modal>
@@ -112,7 +116,10 @@ function ProfileCard() {
       notifyEvents: u.notifyEvents,
     });
   }, [u.displayName, u.phone, u.preferredLanguage, u.notifyAnnouncements, u.notifyEvents]);
-  const save = useAction(() => api.patch('/auth/profile', { ...f, phone: f.phone.trim() }), { success: 'Profile saved' });
+  const save = useAction(() => api.patch('/auth/profile', { ...f, phone: f.phone.trim() }), {
+    success: 'Profile saved',
+    invalidate: ['/auth/activity'],
+  });
   const dirty =
     f.displayName.trim() !== u.displayName ||
     f.phone.trim() !== (u.phone ?? '') ||
