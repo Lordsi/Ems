@@ -154,6 +154,10 @@ export function Checkbox({ checked, onChange, label: text, description, disabled
 /* Layout primitives                                                  */
 /* ------------------------------------------------------------------ */
 
+export function PoweredBy() {
+  return <p className="py-4 text-center text-xs text-slate-400">Powered by aether studio</p>;
+}
+
 export function Card({ children, className, padded = true }: { children: ReactNode; className?: string; padded?: boolean }) {
   return <div className={cx('rounded-lg bg-white shadow-sm ring-1 ring-slate-200', padded && 'p-5', className)}>{children}</div>;
 }
