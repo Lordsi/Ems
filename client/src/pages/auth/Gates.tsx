@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Clock, KeyRound, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { api, ApiError, errorMessage } from '../../lib/api';
 import { useAuth, useMe } from '../../lib/auth';
-import { Alert, Button, Field, Input } from '../../components/ui';
+import { Alert, Button, Field, Input, PoweredBy } from '../../components/ui';
 
 function GateShell({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
   const { me } = useAuth();
@@ -16,18 +16,21 @@ function GateShell({ icon, title, children }: { icon: ReactNode; title: string; 
     navigate('/login');
   };
   return (
-    <div className="flex min-h-screen items-start justify-center bg-slate-50 px-4 py-12 sm:items-center">
-      <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-sm ring-1 ring-slate-200">
-        <div className="mb-5 flex size-12 items-center justify-center rounded-full bg-brand-50 text-brand-700">{icon}</div>
-        <h1 className="text-xl font-semibold text-slate-900">{title}</h1>
-        <div className="mt-3 text-sm text-slate-600">{children}</div>
-        <div className="mt-8 flex items-center justify-between border-t border-slate-200 pt-4 text-sm text-slate-500">
-          <span className="truncate">Signed in as {me?.user.username}</span>
-          <button type="button" onClick={logout} className="font-medium text-brand-700 hover:text-brand-800">
-            Sign out
-          </button>
+    <div className="flex min-h-screen flex-col bg-slate-50">
+      <div className="flex flex-1 items-start justify-center px-4 py-12 sm:items-center">
+        <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-sm ring-1 ring-slate-200">
+          <div className="mb-5 flex size-12 items-center justify-center rounded-full bg-brand-50 text-brand-700">{icon}</div>
+          <h1 className="text-xl font-semibold text-slate-900">{title}</h1>
+          <div className="mt-3 text-sm text-slate-600">{children}</div>
+          <div className="mt-8 flex items-center justify-between border-t border-slate-200 pt-4 text-sm text-slate-500">
+            <span className="truncate">Signed in as {me?.user.username}</span>
+            <button type="button" onClick={logout} className="font-medium text-brand-700 hover:text-brand-800">
+              Sign out
+            </button>
+          </div>
         </div>
       </div>
+      <PoweredBy />
     </div>
   );
 }

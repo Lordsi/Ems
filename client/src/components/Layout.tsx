@@ -26,7 +26,7 @@ import { useAuth, useMe } from '../lib/auth';
 import { useApi } from '../lib/hooks';
 import type { Permission } from '../../../shared/permissions';
 import { ROLE_META } from '../../../shared/permissions';
-import { Avatar, cx } from './ui';
+import { Avatar, cx, PoweredBy } from './ui';
 
 type NavItem = { to: string; label: string; icon: ComponentType<{ className?: string }>; perms?: Permission[]; needsEmployee?: boolean; end?: boolean };
 type NavGroup = { title?: string; items: NavItem[] };
@@ -213,7 +213,7 @@ export function Layout() {
         </div>
       )}
 
-      <div className="lg:pl-64">
+      <div className="flex min-h-screen flex-col lg:pl-64">
         <header className="no-print sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-slate-200 bg-white/95 px-4 backdrop-blur sm:px-6">
           <button type="button" onClick={() => setMobileOpen(true)} className="-ml-1 rounded p-2 text-slate-600 hover:bg-slate-100 lg:hidden" aria-label="Open menu">
             <Menu className="size-5" />
@@ -230,9 +230,10 @@ export function Layout() {
             <Avatar name={me.user.displayName} size="sm" />
           </Link>
         </header>
-        <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
           <Outlet />
         </main>
+        <PoweredBy />
       </div>
     </div>
   );
