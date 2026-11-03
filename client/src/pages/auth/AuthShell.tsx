@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { PoweredBy } from '../../components/ui';
 import { api } from '../../lib/api';
 
 export function usePublicInfo() {
@@ -32,15 +33,18 @@ export function AuthShell({ title, subtitle, children, wide }: { title: string; 
         </div>
         <p className="relative text-xs text-brand-300">Access is restricted to authorised personnel. Activity is logged.</p>
       </div>
-      <div className="flex flex-1 items-start justify-center overflow-y-auto px-4 py-10 sm:items-center sm:px-8">
-        <div className={wide ? 'w-full max-w-2xl' : 'w-full max-w-sm'}>
-          <div className="mb-8 lg:hidden">
-            <span className="text-lg font-semibold text-brand-800">{data?.orgName ?? 'Anglican Diocese of Northern Malawi'}</span>
+      <div className="flex min-h-screen flex-1 flex-col">
+        <div className="flex flex-1 items-start justify-center overflow-y-auto px-4 py-10 sm:items-center sm:px-8">
+          <div className={wide ? 'w-full max-w-2xl' : 'w-full max-w-sm'}>
+            <div className="mb-8 lg:hidden">
+              <span className="text-lg font-semibold text-brand-800">{data?.orgName ?? 'Anglican Diocese of Northern Malawi'}</span>
+            </div>
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{title}</h1>
+            {subtitle && <p className="mt-1.5 text-sm text-slate-500">{subtitle}</p>}
+            <div className="mt-7">{children}</div>
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{title}</h1>
-          {subtitle && <p className="mt-1.5 text-sm text-slate-500">{subtitle}</p>}
-          <div className="mt-7">{children}</div>
         </div>
+        <PoweredBy />
       </div>
     </div>
   );
